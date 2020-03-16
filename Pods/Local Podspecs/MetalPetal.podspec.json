@@ -15,7 +15,7 @@
   },
   "requires_arc": true,
   "platforms": {
-    "ios": "9.0",
+    "ios": "10.0",
     "osx": "10.13"
   },
   "module_map": "MetalPetal.modulemap",
@@ -29,7 +29,8 @@
       "private_header_files": [
         "MTIPrint.h",
         "MTIDefer.h",
-        "MTIHasher.h"
+        "MTIHasher.h",
+        "MTIImageRenderingContext+Internal.h"
       ],
       "weak_frameworks": [
         "MetalPerformanceShaders",

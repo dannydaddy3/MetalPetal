@@ -7,7 +7,11 @@
 
 import Metal
 
-protocol MTIImageViewProtocol {
+#if SWIFT_PACKAGE
+@_exported import MetalPetalObjectiveC
+#endif
+
+public protocol MTIImageViewProtocol: class {
     
     var colorPixelFormat: MTLPixelFormat { get set }
     
@@ -20,6 +24,12 @@ protocol MTIImageViewProtocol {
     var image: MTIImage? { get set }
 }
 
+extension MTIImageViewProtocol {
+    public var inputPort: Port<Self, MTIImage?, ReferenceWritableKeyPath<Self, MTIImage?>> {
+        return Port(self, \.image)
+    }
+}
+
 #if canImport(UIKit)
 
 extension MTIImageView: MTIImageViewProtocol {
@@ -30,4 +40,13 @@ extension MTIThreadSafeImageView: MTIImageViewProtocol {
     
 }
 
+extension MTIImageView: InputPortProvider {
+    
+}
+
+extension MTIThreadSafeImageView: InputPortProvider {
+    
+}
+
 #endif
+

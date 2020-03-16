@@ -7,8 +7,6 @@
 //
 
 #import "ImageRendererViewController.h"
-#import "MetalPetalDemo-Swift.h"
-#import "CameraViewController.h"
 #import <sys/kdebug_signpost.h>
 @import MetalPetal;
 @import MetalKit;
@@ -97,7 +95,6 @@
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
-    [self.navigationController setNavigationBarHidden:YES animated:YES];
     self.renderView.contentScaleFactor = self.view.window.screen.nativeScale;
 }
 
@@ -215,27 +212,17 @@
 - (void)drawInMTKView:(MTKView *)view {
     //https://developer.apple.com/library/content/documentation/3DDrawing/Conceptual/MTLBestPracticesGuide/Drawables.html
     @autoreleasepool {
-        if (@available(iOS 10.0, *)) {
-            kdebug_signpost_start(1, 0, 0, 0, 1);
-        }
+        kdebug_signpost_start(1, 0, 0, 0, 1);
         MTIImage *outputImage = [self saturationTestOutputImage];
-        MTIDrawableRenderingRequest *request = [[MTIDrawableRenderingRequest alloc] init];
-        request.drawableProvider = self.renderView;
-        request.resizingMode = MTIDrawableRenderingResizingModeAspect;
+        MTIDrawableRenderingRequest *request = [[MTIDrawableRenderingRequest alloc] initWithDrawableProvider:view resizingMode:MTIDrawableRenderingResizingModeAspect];
         NSError *error;
         [self.context renderImage:outputImage toDrawableWithRequest:request error:&error];
-        if (@available(iOS 10.0, *)) {
-            kdebug_signpost_end(1, 0, 0, 0, 1);
-        }
+        kdebug_signpost_end(1, 0, 0, 0, 1);
     }
 }
 
 - (void)mtkView:(MTKView *)view drawableSizeWillChange:(CGSize)size {
     
-}
-
-- (BOOL)prefersStatusBarHidden {
-    return YES;
 }
 
 @end

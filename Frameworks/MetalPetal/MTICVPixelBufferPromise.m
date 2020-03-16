@@ -73,6 +73,7 @@ static const MTIYUVColorConversion MTIYUVColorConversion709 = {
 
 MTIContextPromiseAssociatedValueTableName const MTIContextCVPixelBufferPromiseCVMetalTextureHolderTable = @"MTIContextCVPixelBufferPromiseCVMetalTextureHolderTable";
 
+// for internal use only
 static MTLPixelFormat MTIMTLPixelFormatForCVPixelFormatType(OSType type, BOOL sRGB) {
     switch (type) {
         case kCVPixelFormatType_32BGRA:
@@ -88,11 +89,13 @@ static MTLPixelFormat MTIMTLPixelFormatForCVPixelFormatType(OSType type, BOOL sR
         case kCVPixelFormatType_DisparityFloat16:
         case kCVPixelFormatType_DepthFloat16:
         case kCVPixelFormatType_OneComponent16Half:
+            NSCParameterAssert(!sRGB);
             return MTLPixelFormatR16Float;
             
         case kCVPixelFormatType_DisparityFloat32:
         case kCVPixelFormatType_DepthFloat32:
         case kCVPixelFormatType_OneComponent32Float:
+            NSCParameterAssert(!sRGB);
             return MTLPixelFormatR32Float;
             
         case kCVPixelFormatType_OneComponent8:
@@ -132,7 +135,9 @@ static MTLPixelFormat MTIMTLPixelFormatForCVPixelFormatType(OSType type, BOOL sR
                                                       texture2DDescriptorWithPixelFormat:MTIMTLPixelFormatForCVPixelFormatType(CVPixelBufferGetPixelFormatType(pixelBuffer), _sRGB)
                                                       width:CVPixelBufferGetWidth(_pixelBuffer)
                                                       height:CVPixelBufferGetHeight(_pixelBuffer)
-                                                      usage:MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite];
+                                                      mipmapped:NO
+                                                      usage:MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite
+                                                      resourceOptions:MTLResourceStorageModePrivate];
     }
     return self;
 }
@@ -307,7 +312,7 @@ static MTLPixelFormat MTIMTLPixelFormatForCVPixelFormatType(OSType type, BOOL sR
                 
                 // Render Pipeline
                 MTLPixelFormat pixelFormat = MTLPixelFormatBGRA8Unorm;
-                MTITextureDescriptor *textureDescriptor = [MTITextureDescriptor texture2DDescriptorWithPixelFormat:pixelFormat width:CVPixelBufferGetWidth(_pixelBuffer) height:CVPixelBufferGetHeight(_pixelBuffer) usage:MTLTextureUsageShaderRead | MTLTextureUsageRenderTarget];
+                MTITextureDescriptor *textureDescriptor = [MTITextureDescriptor texture2DDescriptorWithPixelFormat:pixelFormat width:CVPixelBufferGetWidth(_pixelBuffer) height:CVPixelBufferGetHeight(_pixelBuffer) mipmapped:NO usage:MTLTextureUsageShaderRead | MTLTextureUsageRenderTarget resourceOptions:MTLResourceStorageModePrivate];
                 MTIImagePromiseRenderTarget *renderTarget = [renderingContext.context newRenderTargetWithResuableTextureDescriptor:textureDescriptor error:&error];
                 if (error) {
                     if (inOutError) {

@@ -7,7 +7,11 @@
 //
 
 import Foundation
-import simd
+import Metal
+
+#if SWIFT_PACKAGE
+@_exported import MetalPetalObjectiveC
+#endif
 
 extension MTIVertex {
     public init(position: (Float,Float,Float,Float), textureCoordinate: (Float, Float)) {

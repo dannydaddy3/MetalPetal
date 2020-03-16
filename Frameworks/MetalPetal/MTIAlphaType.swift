@@ -7,6 +7,10 @@
 
 import Foundation
 
+#if SWIFT_PACKAGE
+@_exported import MetalPetalObjectiveC
+#endif
+
 extension MTIAlphaTypeHandlingRule {
     
     public var acceptableAlphaTypes: [MTIAlphaType] {
@@ -17,6 +21,18 @@ extension MTIAlphaTypeHandlingRule {
     
     public convenience init(acceptableAlphaTypes: [MTIAlphaType], outputAlphaType: MTIAlphaType) {
         self.init(__acceptableAlphaTypes: acceptableAlphaTypes.map({ NSNumber(value: $0.rawValue) }), outputAlphaType: outputAlphaType)
+    }
+    
+    public convenience init(acceptableAlphaTypes: [MTIAlphaType], _ handler: @escaping ([MTIAlphaType]) -> MTIAlphaType) {
+        self.init(__acceptableAlphaTypes: acceptableAlphaTypes.map({ NSNumber(value: $0.rawValue) }), outputAlphaTypeHandler: { types in
+            return handler(types.map({ MTIAlphaType.init(rawValue: $0.intValue)! }))
+        })
+    }
+    
+    public convenience init(_ handler: @escaping ([MTIAlphaType]) -> MTIAlphaType) {
+        self.init(__acceptableAlphaTypes: [MTIAlphaType.premultiplied, MTIAlphaType.nonPremultiplied, MTIAlphaType.alphaIsOne].map({ NSNumber(value: $0.rawValue) }), outputAlphaTypeHandler: { types in
+            return handler(types.map({ MTIAlphaType.init(rawValue: $0.intValue)! }))
+        })
     }
     
     public func outputAlphaType(forInputAlphaTypes inputAlphaTypes: [MTIAlphaType]) -> MTIAlphaType {
