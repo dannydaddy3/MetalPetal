@@ -9,8 +9,39 @@ import Foundation
 import MetalKit
 
 #if SWIFT_PACKAGE
-@_exported import MetalPetalObjectiveC
+import MetalPetalObjectiveC.Core
 #endif
+
+extension MTIImage {
+    
+    public convenience init(cgImage: CGImage, orientation: CGImagePropertyOrientation = .up, options: MTICGImageLoadingOptions = .default, isOpaque: Bool = false) {
+        self.init(__cgImage: cgImage, orientation: orientation, loadingOptions: options, isOpaque: isOpaque)
+    }
+    
+    public convenience init?(contentsOf url: URL, options: MTICGImageLoadingOptions = .default, alphaType: MTIAlphaType? = nil) {
+        if let alphaType = alphaType {
+            self.init(__contentsOf: url, loadingOptions: options, alphaType: alphaType)
+        } else {
+            self.init(__contentsOf: url, loadingOptions: options)
+        }
+    }
+    
+    public convenience init(cgImage: CGImage, options: [MTKTextureLoader.Option: Any], isOpaque: Bool = false) {
+        self.init(__cgImage: cgImage, options: options, isOpaque: isOpaque)
+    }
+    
+    public convenience init?(contentsOf url: URL, options: [MTKTextureLoader.Option: Any], alphaType: MTIAlphaType? = nil) {
+        if let alphaType = alphaType {
+            self.init(__contentsOf: url, options: options, alphaType: alphaType)
+        } else {
+            self.init(__contentsOf: url, options: options)
+        }
+    }
+    
+    public convenience init?(contentsOf url: URL, size: CGSize, options: [MTKTextureLoader.Option: Any], alphaType: MTIAlphaType) {
+        self.init(__contentsOf: url, size: size, options: options, alphaType: alphaType)
+    }
+}
 
 extension MTIImage {
     
@@ -96,13 +127,10 @@ extension MTIImage {
 
 import UIKit
 
-extension MTIImage {
-    public func oriented(_ orientation: UIImage.Orientation, outputPixelFormat pixelFormat: MTLPixelFormat = .unspecified) -> MTIImage {
-        if orientation == .up {
-            return self
-        }
+extension UIImage.Orientation {
+    fileprivate var cgImagePropertyOrientation: CGImagePropertyOrientation {
         let cgImagePropertyOrientation: CGImagePropertyOrientation
-        switch orientation {
+        switch self {
         case .up:
             cgImagePropertyOrientation = .up
         case .upMirrored:
@@ -120,13 +148,24 @@ extension MTIImage {
         case .downMirrored:
             cgImagePropertyOrientation = .downMirrored
         @unknown default:
-            fatalError("Unknown UIImage.Orientation: \(orientation.rawValue)")
+            fatalError("Unknown UIImage.Orientation: \(self.rawValue)")
         }
-        return self.oriented(cgImagePropertyOrientation, outputPixelFormat: pixelFormat)
+        return cgImagePropertyOrientation
+    }
+}
+
+extension MTIImage {
+    @available(*, deprecated, message: "Use `MTIImage(image:colorSpace:isOpaque:)` instead")
+    public func oriented(_ orientation: UIImage.Orientation, outputPixelFormat pixelFormat: MTLPixelFormat = .unspecified) -> MTIImage {
+        if orientation == .up {
+            return self
+        }
+        return self.oriented(orientation.cgImagePropertyOrientation, outputPixelFormat: pixelFormat)
     }
 }
 
 extension UIImage {
+    @available(*, deprecated, message: "Use `MTIImage(image:colorSpace:isOpaque:)` instead")
     public func makeMTIImage(sRGB: Bool = false, isOpaque: Bool = false) -> MTIImage? {
         guard let cgImage = self.cgImage else {
             return nil
@@ -135,4 +174,48 @@ extension UIImage {
     }
 }
 
+extension MTIImage {
+    public convenience init(image: UIImage, colorSpace: CGColorSpace? = nil, isOpaque: Bool = false) {
+        let cgImage: CGImage
+        let orientation: CGImagePropertyOrientation
+        if let cg = image.cgImage {
+            cgImage = cg
+            orientation = image.imageOrientation.cgImagePropertyOrientation
+        } else {
+            let format: UIGraphicsImageRendererFormat
+            if #available(iOS 11.0, *) {
+                format = UIGraphicsImageRendererFormat.preferred()
+            } else {
+                format = UIGraphicsImageRendererFormat()
+            }
+            format.opaque = isOpaque
+            format.scale = image.scale
+            cgImage = UIGraphicsImageRenderer(size: image.size).image { _ in
+                image.draw(at: .zero)
+            }.cgImage!
+            orientation = .up
+        }
+        let options = MTICGImageLoadingOptions(colorSpace: colorSpace)
+        self.init(cgImage: cgImage, orientation: orientation, options: options, isOpaque: isOpaque)
+    }
+}
+
 #endif
+
+#if canImport(AppKit)
+
+import AppKit
+
+extension MTIImage {
+    @available(macCatalyst, unavailable)
+    public convenience init?(image: NSImage, colorSpace: CGColorSpace? = nil, isOpaque: Bool = false) {
+        guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+            return nil
+        }
+        let options = MTICGImageLoadingOptions(colorSpace: colorSpace)
+        self.init(cgImage: cgImage, orientation: .up, options: options, isOpaque: isOpaque)
+    }
+}
+
+#endif
+

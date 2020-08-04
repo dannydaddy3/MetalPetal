@@ -10,7 +10,7 @@ import CoreGraphics
 import Metal
 
 #if SWIFT_PACKAGE
-@_exported import MetalPetalObjectiveC
+import MetalPetalObjectiveC.Core
 #endif
 
 extension MTILayer.FlipOptions: Hashable {
@@ -62,6 +62,8 @@ public class MultilayerCompositingFilter: MTIFilter {
         
         public var opacity: Float = 0
         
+        public var tintColor: MTIColor = .clear
+        
         public var blendMode: MTIBlendMode = .normal
         
         public init(content: MTIImage) {
@@ -87,6 +89,7 @@ public class MultilayerCompositingFilter: MTIFilter {
             hasher.combine(size.height)
             hasher.combine(rotation)
             hasher.combine(opacity)
+            hasher.combine(tintColor)
             hasher.combine(blendMode)
         }
     }
@@ -125,6 +128,15 @@ public class MultilayerCompositingFilter: MTIFilter {
         }
     }
     
+    public var rasterSampleCount: Int {
+        set {
+            internalFilter.rasterSampleCount = UInt(newValue)
+        }
+        get {
+            return Int(internalFilter.rasterSampleCount)
+        }
+    }
+    
     private var internalFilter = MTIMultilayerCompositingFilter()
     
     public init() {
@@ -142,7 +154,7 @@ extension MultilayerCompositingFilter {
 
 extension MultilayerCompositingFilter.Layer {
     fileprivate func bridgeToObjectiveC() -> MTILayer {
-        return MTILayer(content: self.content, contentRegion: self.contentRegion, contentFlipOptions: self.contentFlipOptions, compositingMask: self.compositingMask, layoutUnit: self.layoutUnit, position: self.position, size: self.size, rotation: self.rotation, opacity: self.opacity, blendMode: self.blendMode)
+        return MTILayer(content: self.content, contentRegion: self.contentRegion, contentFlipOptions: self.contentFlipOptions, compositingMask: self.compositingMask, layoutUnit: self.layoutUnit, position: self.position, size: self.size, rotation: self.rotation, opacity: self.opacity, tintColor: self.tintColor, blendMode: self.blendMode)
     }
 }
 

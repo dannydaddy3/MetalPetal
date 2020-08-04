@@ -22,11 +22,40 @@
 #import "MTILock.h"
 #import "MTIPixelFormat.h"
 #import "MTILibrarySource.h"
+#import "MTITexturePool.h"
+#import "MTITextureLoader.h"
 #import <MetalPerformanceShaders/MetalPerformanceShaders.h>
+
+// TODO: Remove this in swift 5.3. https://github.com/apple/swift-evolution/blob/master/proposals/0271-package-manager-resources.md
+#if __has_include("MTISwiftPMBuiltinLibrarySupport.h")
+#import "MTISwiftPMBuiltinLibrarySupport.h"
+#endif
 
 NSString * const MTIContextDefaultLabel = @"MetalPetal";
 
 @implementation MTIContextOptions
+
+static NSBundle * MTIDefaultBuiltinLibraryBundle(void) {
+    static NSBundle *bundle = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        #ifdef SWIFTPM_MODULE_BUNDLE
+        bundle = SWIFTPM_MODULE_BUNDLE;
+        #else
+            #if METALPETAL_DEFAULT_LIBRARY_IN_BUNDLE
+            bundle = [NSBundle bundleWithURL:[[NSBundle bundleForClass:MTIContext.class] URLForResource:@"MetalPetal" withExtension:@"bundle"]];
+            #else
+                // TODO: Remove this in swift 5.3. https://github.com/apple/swift-evolution/blob/master/proposals/0271-package-manager-resources.md
+                #if __has_include("MTISwiftPMBuiltinLibrarySupport.h")
+                bundle = nil;
+                #else
+                bundle = [NSBundle bundleForClass:MTIContext.class];
+                #endif
+            #endif
+        #endif
+    });
+    return bundle;
+}
 
 - (instancetype)init {
     if (self = [super init]) {
@@ -36,11 +65,14 @@ NSString * const MTIContextDefaultLabel = @"MetalPetal";
         _enablesYCbCrPixelFormatSupport = YES;
         _automaticallyReclaimResources = YES;
         _label = MTIContextDefaultLabel;
-        #ifdef SWIFTPM_MODULE_BUNDLE
-        _defaultLibraryURL = MTIDefaultLibraryURLForBundle(SWIFTPM_MODULE_BUNDLE);
+        
+        // TODO: Remove this in swift 5.3. https://github.com/apple/swift-evolution/blob/master/proposals/0271-package-manager-resources.md
+        #if __has_include("MTISwiftPMBuiltinLibrarySupport.h")
+        _defaultLibraryURL = _MTISwiftPMBuiltinLibrarySourceURL();
         #else
-        _defaultLibraryURL = MTIDefaultLibraryURLForBundle([NSBundle bundleForClass:self.class]);
+        _defaultLibraryURL = MTIDefaultLibraryURLForBundle(MTIDefaultBuiltinLibraryBundle());
         #endif
+        
         _textureLoaderClass = MTIContextOptions.defaultTextureLoaderClass;
         _coreVideoMetalTextureBridgeClass = MTIContextOptions.defaultCoreVideoMetalTextureBridgeClass;
         _texturePoolClass = MTIContextOptions.defaultTexturePoolClass;
@@ -69,7 +101,7 @@ static Class _defaultTextureLoaderClass = nil;
 }
 
 + (Class<MTITextureLoader>)defaultTextureLoaderClass {
-    return _defaultTextureLoaderClass ?: MTKTextureLoader.class;
+    return _defaultTextureLoaderClass ?: MTIDefaultTextureLoader.class;
 }
 
 static Class _defaultCoreVideoMetalTextureBridgeClass = nil;
@@ -201,7 +233,19 @@ static void MTIContextEnumerateAllInstances(void (^enumerator)(MTIContext *conte
         }
         
         NSError *libraryError = nil;
-        id<MTLLibrary> defaultLibrary = [device newLibraryWithFile:options.defaultLibraryURL.path error:&libraryError];
+        id<MTLLibrary> defaultLibrary = nil;
+        if ([options.defaultLibraryURL.scheme isEqualToString:MTIURLSchemeForLibraryWithSource]) {
+            defaultLibrary = [MTILibrarySourceRegistration.sharedRegistration newLibraryWithURL:options.defaultLibraryURL device:device error:&libraryError];
+        } else {
+            if (options.defaultLibraryURL.path) {
+                defaultLibrary = [device newLibraryWithFile:options.defaultLibraryURL.path error:&libraryError];
+            } else {
+                NSAssert(NO, @"Default library not found.");
+                libraryError = MTIErrorCreate(MTIErrorDefaultLibraryNotFound, @{
+                    @"defaultBuiltinLibraryBundlePath": MTIDefaultBuiltinLibraryBundle().bundleURL.path ?: @"(null)"
+                });
+            }
+        }
         if (!defaultLibrary || libraryError) {
             if (inOutError) {
                 *inOutError = libraryError;
@@ -226,6 +270,7 @@ static void MTIContextEnumerateAllInstances(void (^enumerator)(MTIContext *conte
         
         _texturePool = [options.texturePoolClass newTexturePoolWithDevice:device];
         _libraryCache = [NSMutableDictionary dictionary];
+        _libraryCache[options.defaultLibraryURL] = defaultLibrary;
         _functionCache = [NSMutableDictionary dictionary];
         _renderPipelineCache = [NSMutableDictionary dictionary];
         _computePipelineCache = [NSMutableDictionary dictionary];
@@ -422,7 +467,7 @@ static NSString * const MTIContextRenderingLockNotLockedErrorDescription = @"Con
         }
         
         NSString *functionName = descriptor.name;
-        #if TARGET_OS_SIMULATOR
+        #if TARGET_OS_SIMULATOR || TARGET_OS_MACCATALYST
         for (NSString *name in library.functionNames) {
             if ([name hasSuffix:[@"::" stringByAppendingString:descriptor.name]]) {
                 functionName = name;

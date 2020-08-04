@@ -11,7 +11,7 @@
 #import "MTIImage.h"
 #import "MTITransform.h"
 #import "MTIRenderPassOutputDescriptor.h"
-#import "MTIVector.h"
+#import "MTIVertex.h"
 
 static simd_float4x4 transformMatrix(CGSize imageSize, CGRect viewport, float fieldOfView, CATransform3D transform) {
     simd_float4x4 matrix;
@@ -41,6 +41,7 @@ static simd_float4x4 transformMatrix(CGSize imageSize, CGRect viewport, float fi
 
 - (instancetype)init {
     if (self = [super init]) {
+        _rasterSampleCount = 1;
         _transform = CATransform3DIdentity;
         _fieldOfView = 0.0;
     }
@@ -124,9 +125,10 @@ static simd_float4x4 transformMatrix(CGSize imageSize, CGRect viewport, float fi
         { .position = {br.x, br.y, 0, br.w} , .textureCoordinate = { 1, 0 } }
     } count:4 primitiveType:MTLPrimitiveTypeTriangleStrip];
     
-    MTIRenderPassOutputDescriptor *outputDescriptor = [[MTIRenderPassOutputDescriptor alloc] initWithDimensions:MTITextureDimensionsMake2DFromCGSize(viewport.size) pixelFormat:MTIPixelFormatUnspecified loadAction:MTLLoadActionClear];
+    MTIRenderPassOutputDescriptor *outputDescriptor = [[MTIRenderPassOutputDescriptor alloc] initWithDimensions:MTITextureDimensionsMake2DFromCGSize(viewport.size) pixelFormat:self.outputPixelFormat loadAction:MTLLoadActionClear];
     MTIRenderCommand *command = [[MTIRenderCommand alloc] initWithKernel:MTIRenderPipelineKernel.passthroughRenderPipelineKernel geometry:geomerty images:@[self.inputImage] parameters:@{}];
     return [MTIRenderCommand imagesByPerformingRenderCommands:@[command]
+                                            rasterSampleCount:_rasterSampleCount
                                             outputDescriptors:@[outputDescriptor]].firstObject;
 }
 

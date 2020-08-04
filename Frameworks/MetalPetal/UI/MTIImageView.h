@@ -9,12 +9,17 @@
 
 #import <UIKit/UIKit.h>
 #import <MetalKit/MetalKit.h>
+#if __has_include(<MetalPetal/MetalPetal.h>)
+#import <MetalPetal/MTIDrawableRendering.h>
+#else
 #import "MTIDrawableRendering.h"
+#endif
 
 @class MTIImage,MTIContext;
 
 NS_ASSUME_NONNULL_BEGIN
 
+__attribute__((objc_subclassing_restricted))
 @interface MTIImageView : UIView <MTKViewDelegate>
 
 @property (nonatomic) MTLPixelFormat colorPixelFormat;

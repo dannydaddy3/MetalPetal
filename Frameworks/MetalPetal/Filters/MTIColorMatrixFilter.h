@@ -6,9 +6,13 @@
 //
 //
 
-#import "MTIFilter.h"
+#if __has_include(<MetalPetal/MetalPetal.h>)
+#import <MetalPetal/MTIUnaryImageRenderingFilter.h>
+#import <MetalPetal/MTIColorMatrix.h>
+#else
 #import "MTIUnaryImageRenderingFilter.h"
 #import "MTIColorMatrix.h"
+#endif
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -20,6 +24,7 @@ FOUNDATION_EXPORT NSString * const MTIColorMatrixFilterColorMatrixParameterKey;
 
 @end
 
+__attribute__((objc_subclassing_restricted))
 @interface MTIExposureFilter : MTIColorMatrixFilter
 
 - (void)setColorMatrix:(MTIColorMatrix)colorMatrix NS_UNAVAILABLE;
@@ -28,6 +33,7 @@ FOUNDATION_EXPORT NSString * const MTIColorMatrixFilterColorMatrixParameterKey;
 
 @end
 
+__attribute__((objc_subclassing_restricted))
 @interface MTISaturationFilter : MTIColorMatrixFilter
 
 - (void)setColorMatrix:(MTIColorMatrix)colorMatrix NS_UNAVAILABLE;
@@ -38,12 +44,14 @@ FOUNDATION_EXPORT NSString * const MTIColorMatrixFilterColorMatrixParameterKey;
 
 @end
 
+__attribute__((objc_subclassing_restricted))
 @interface MTIColorInvertFilter : MTIColorMatrixFilter
 
 - (void)setColorMatrix:(MTIColorMatrix)colorMatrix NS_UNAVAILABLE;
 
 @end
 
+__attribute__((objc_subclassing_restricted))
 @interface MTIOpacityFilter: MTIColorMatrixFilter
 
 - (void)setColorMatrix:(MTIColorMatrix)colorMatrix NS_UNAVAILABLE;
@@ -52,6 +60,7 @@ FOUNDATION_EXPORT NSString * const MTIColorMatrixFilterColorMatrixParameterKey;
 
 @end
 
+__attribute__((objc_subclassing_restricted))
 @interface MTIBrightnessFilter: MTIColorMatrixFilter
 
 - (void)setColorMatrix:(MTIColorMatrix)colorMatrix NS_UNAVAILABLE;
@@ -60,6 +69,7 @@ FOUNDATION_EXPORT NSString * const MTIColorMatrixFilterColorMatrixParameterKey;
 
 @end
 
+__attribute__((objc_subclassing_restricted))
 @interface MTIContrastFilter: MTIColorMatrixFilter
 
 - (void)setColorMatrix:(MTIColorMatrix)colorMatrix NS_UNAVAILABLE;

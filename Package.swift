@@ -21,6 +21,13 @@ let package = Package(
         .target(
             name: "MetalPetalObjectiveC",
             dependencies: []),
+        .target(
+            name: "MetalPetalTestHelpers",
+            dependencies: ["MetalPetal"],
+            path: "Tests/MetalPetalTestHelpers"),
+        .testTarget(
+            name: "MetalPetalTests",
+            dependencies: ["MetalPetal", "MetalPetalTestHelpers"]),
     ],
     cxxLanguageStandard: .cxx14
 )

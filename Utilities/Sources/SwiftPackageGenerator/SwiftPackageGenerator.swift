@@ -14,46 +14,19 @@ public struct SwiftPackageGenerator: ParsableCommand {
     
     private let fileManager = FileManager()
     
-    private let packageFileContents = """
-    // swift-tools-version:5.1
-    
-    // requires SE-0271
-
-    import PackageDescription
-
-    let package = Package(
-        name: "MetalPetal",
-        platforms: [.macOS(.v10_13), .iOS(.v10)],
-        products: [
-            .library(
-                name: "MetalPetal",
-                targets: ["MetalPetal"]
-            )
-        ],
-        dependencies: [],
-        targets: [
-            .target(
-                name: "MetalPetal",
-                dependencies: ["MetalPetalObjectiveC"]),
-            .target(
-                name: "MetalPetalObjectiveC",
-                dependencies: []),
-        ],
-        cxxLanguageStandard: .cxx14
-    )
-    """
-    
     private let objectiveCModuleMapContents = """
     module MetalPetalObjectiveC {
-        header "MetalPetal.h"
-        export *
-
+        explicit module Core {
+            header "MetalPetal.h"
+            export *
+        }
         explicit module Extension {
             header "MTIContext+Internal.h"
             header "MTIImage+Promise.h"
             export *
         }
     }
+
     """
     
     public init() { }
@@ -73,16 +46,67 @@ public struct SwiftPackageGenerator: ParsableCommand {
         let fileHandlers = [
             SourceFileHandler(fileTypes: ["h"], projectRoot: projectRoot, targetURL: objectiveCHeaderDirectory, fileManager: fileManager),
             SourceFileHandler(fileTypes: ["m", "mm", "metal"], projectRoot: projectRoot, targetURL: objectiveCTargetDirectory, fileManager: fileManager),
-            SourceFileHandler(fileTypes: ["swift"], projectRoot: projectRoot, targetURL: swiftTargetDirectory, fileManager: fileManager)
+            SourceFileHandler(fileTypes: ["swift"], projectRoot: projectRoot, targetURL: swiftTargetDirectory, fileManager: fileManager),
+            SourceFileHandler(fileTypes: ["MTIShaderLib.h"], projectRoot: projectRoot, targetURL: objectiveCTargetDirectory, fileManager: fileManager)
         ]
         
         try processSources(in: sourcesDirectory, fileHandlers: fileHandlers)
         
-        try objectiveCModuleMapContents.write(to: objectiveCHeaderDirectory.appendingPathComponent("module.modulemap"), atomically: true, encoding: .utf8)
+        //TODO: remove this in swift 5.3
+        try generateBuiltinMetalLibrarySupportCode(directory: objectiveCTargetDirectory)
         
-        let packageFileURL = projectRoot.appendingPathComponent("Package.swift")
-        try? fileManager.removeItem(at: packageFileURL)
-        try packageFileContents.write(to: packageFileURL, atomically: true, encoding: .utf8)
+        try objectiveCModuleMapContents.write(to: objectiveCHeaderDirectory.appendingPathComponent("module.modulemap"), atomically: true, encoding: .utf8)
+    }
+    
+    public func generateBuiltinMetalLibrarySupportCode(directory: URL) throws {
+        try """
+        // Auto generated.
+        #import <Foundation/Foundation.h>
+
+        FOUNDATION_EXPORT NSURL * _MTISwiftPMBuiltinLibrarySourceURL(void);
+        
+        """.write(to: directory.appendingPathComponent("MTISwiftPMBuiltinLibrarySupport.h"), atomically: true, encoding: .utf8)
+        
+        try """
+        #import "MTISwiftPMBuiltinLibrarySupport.h"
+        #import "MTILibrarySource.h"
+        #import <Metal/Metal.h>
+
+        static const char *MTIBuiltinLibrarySource = R"mtirawstring(
+        \(try collectBuiltinMetalLibrarySource())
+        )mtirawstring";
+
+        NSURL * _MTISwiftPMBuiltinLibrarySourceURL(void) {
+            static NSURL *url;
+            static dispatch_once_t onceToken;
+            dispatch_once(&onceToken, ^{
+                NSString *targetConditionals = [NSString stringWithFormat:@"#ifndef TARGET_OS_SIMULATOR\\n#define TARGET_OS_SIMULATOR %@\\n#endif",@(TARGET_OS_SIMULATOR)];
+                NSString *librarySource = [targetConditionals stringByAppendingString:[NSString stringWithCString:MTIBuiltinLibrarySource encoding:NSUTF8StringEncoding]];
+                MTLCompileOptions *options = [[MTLCompileOptions alloc] init];
+                options.fastMathEnabled = YES;
+                options.languageVersion = MTLLanguageVersion1_2;
+                url = [MTILibrarySourceRegistration.sharedRegistration registerLibraryWithSource:librarySource compileOptions:options];
+            });
+            return url;
+        }
+        """.write(to: directory.appendingPathComponent("MTISwiftPMBuiltinLibrarySupport.mm"), atomically: true, encoding: .utf8)
+    }
+    
+    public func collectBuiltinMetalLibrarySource() throws -> String {
+        var librarySource = ""
+        let sourceFileDirectory = URL(fileURLWithPath: String(#file)).deletingLastPathComponent().appendingPathComponent("../../../Sources/MetalPetalObjectiveC")
+        let headerURL = sourceFileDirectory.appendingPathComponent("include/MTIShaderLib.h")
+        librarySource += try String(contentsOf: headerURL)
+        let fileManager = FileManager()
+        for source in try fileManager.contentsOfDirectory(at: sourceFileDirectory, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]).sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+            if source.pathExtension == "metal" {
+                librarySource += "\n"
+                librarySource += try String(contentsOf: source)
+                    .replacingOccurrences(of: "#include \"MTIShaderLib.h\"", with: "\n")
+                    .replacingOccurrences(of: "#include <TargetConditionals.h>", with: "\n")
+            }
+        }
+        return librarySource
     }
     
     private func processSources(in directory: URL, fileHandlers: [SourceFileHandler]) throws {
@@ -92,9 +116,7 @@ public struct SwiftPackageGenerator: ParsableCommand {
                 try processSources(in: sourceFile, fileHandlers: fileHandlers)
             } else {
                 for fileHandler in fileHandlers {
-                    if try fileHandler.handle(sourceFile) {
-                        break
-                    }
+                    try fileHandler.handle(sourceFile)
                 }
             }
         }
@@ -113,8 +135,8 @@ public struct SwiftPackageGenerator: ParsableCommand {
             }
         }
         
-        func handle(_ file: URL) throws -> Bool {
-            if fileTypes.contains(file.pathExtension) {
+        @discardableResult func handle(_ file: URL) throws -> Bool {
+            if fileTypes.contains(file.pathExtension) || fileTypes.contains(file.lastPathComponent) {
                 let fileRelativeToProjectRoot = try relativePathComponents(for: file, baseURL: projectRoot)
                 let targetRelativeToProjectRoot = try relativePathComponents(for: targetURL, baseURL: projectRoot)
                 let destinationURL = URL(string: (Array<String>(repeating: "..", count: targetRelativeToProjectRoot.count) + fileRelativeToProjectRoot).joined(separator: "/"))!

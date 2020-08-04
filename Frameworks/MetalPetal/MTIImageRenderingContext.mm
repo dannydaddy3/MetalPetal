@@ -80,6 +80,7 @@ public:
     }
 };
 
+__attribute__((objc_subclassing_restricted))
 @interface MTITransientImagePromiseResolution: NSObject <MTIImagePromiseResolution>
 
 @property (nonatomic,copy) void (^invalidationHandler)(id);
@@ -109,6 +110,7 @@ public:
 
 @end
 
+__attribute__((objc_subclassing_restricted))
 @interface MTIPersistImageResolutionHolder : NSObject
 
 @property (nonatomic,strong) MTIImagePromiseRenderTarget *renderTarget;
@@ -312,6 +314,7 @@ MTIContextImageAssociatedValueTableName const MTIContextImagePersistentResolutio
 @end
 
 
+__attribute__((objc_subclassing_restricted))
 @interface MTIImageBufferPromise: NSObject <MTIImagePromise>
 
 @property (nonatomic, strong, readonly) MTIPersistImageResolutionHolder *resolution;
@@ -333,9 +336,9 @@ MTIContextImageAssociatedValueTableName const MTIContextImagePersistentResolutio
     return @[];
 }
 
-- (instancetype)initWithPersistImageResolutionHolder:(MTIPersistImageResolutionHolder *)holder alphaType:(MTIAlphaType)alphaType context:(MTIContext *)context {
+- (instancetype)initWithPersistImageResolutionHolder:(MTIPersistImageResolutionHolder *)holder dimensions:(MTITextureDimensions)dimensions alphaType:(MTIAlphaType)alphaType context:(MTIContext *)context {
     if (self = [super init]) {
-        _dimensions = (MTITextureDimensions){holder.renderTarget.texture.width,holder.renderTarget.texture.height,holder.renderTarget.texture.depth};
+        _dimensions = dimensions;
         _alphaType = alphaType;
         _resolution = holder;
         _context = context;
@@ -377,7 +380,7 @@ MTIContextImageAssociatedValueTableName const MTIContextImagePersistentResolutio
     if (!persistResolution) {
         return nil;
     }
-    return [[MTIImage alloc] initWithPromise:[[MTIImageBufferPromise alloc] initWithPersistImageResolutionHolder:persistResolution alphaType:targetImage.alphaType context:self] samplerDescriptor:targetImage.samplerDescriptor cachePolicy:MTIImageCachePolicyPersistent];
+    return [[MTIImage alloc] initWithPromise:[[MTIImageBufferPromise alloc] initWithPersistImageResolutionHolder:persistResolution dimensions:targetImage.dimensions alphaType:targetImage.alphaType context:self] samplerDescriptor:targetImage.samplerDescriptor cachePolicy:MTIImageCachePolicyPersistent];
 }
 
 @end

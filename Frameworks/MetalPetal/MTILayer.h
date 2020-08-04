@@ -5,15 +5,18 @@
 //  Created by Yu Ao on 14/11/2017.
 //
 
-#import <Foundation/Foundation.h>
 #import <CoreGraphics/CoreGraphics.h>
+#if __has_include(<MetalPetal/MetalPetal.h>)
+#import <MetalPetal/MTIBlendModes.h>
+#import <MetalPetal/MTIColor.h>
+#else
 #import "MTIBlendModes.h"
 #import "MTIColor.h"
-#import "MTIMask.h"
+#endif
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class MTIImage;
+@class MTIImage, MTIMask;
 
 typedef NS_CLOSED_ENUM(NSInteger, MTILayerLayoutUnit) {
     MTILayerLayoutUnitPixel,
@@ -27,6 +30,7 @@ typedef NS_OPTIONS(NSUInteger, MTILayerFlipOptions) {
 } NS_SWIFT_NAME(MTILayer.FlipOptions);
 
 /// A MTILayer represents a compositing layer for MTIMultilayerCompositingFilter. MTILayers use a UIKit like coordinate system.
+__attribute__((objc_subclassing_restricted))
 @interface MTILayer: NSObject <NSCopying>
 
 @property (nonatomic, strong, readonly) MTIImage *content;
@@ -46,6 +50,9 @@ typedef NS_OPTIONS(NSUInteger, MTILayerFlipOptions) {
 @property (nonatomic, readonly) float rotation; //rad
 
 @property (nonatomic, readonly) float opacity;
+
+/// Tint the content to with the color. If the tintColor's alpha is zero original content is rendered.
+@property (nonatomic, readonly) MTIColor tintColor;
 
 @property (nonatomic, copy, readonly) MTIBlendMode blendMode;
 
@@ -90,6 +97,18 @@ typedef NS_OPTIONS(NSUInteger, MTILayerFlipOptions) {
                            size:(CGSize)size
                        rotation:(float)rotation
                         opacity:(float)opacity
+                      blendMode:(MTIBlendMode)blendMode;
+
+- (instancetype)initWithContent:(MTIImage *)content
+                  contentRegion:(CGRect)contentRegion
+             contentFlipOptions:(MTILayerFlipOptions)contentFlipOptions
+                compositingMask:(nullable MTIMask *)compositingMask
+                     layoutUnit:(MTILayerLayoutUnit)layoutUnit
+                       position:(CGPoint)position
+                           size:(CGSize)size
+                       rotation:(float)rotation
+                        opacity:(float)opacity
+                      tintColor:(MTIColor)tintColor
                       blendMode:(MTIBlendMode)blendMode NS_DESIGNATED_INITIALIZER;
 
 - (CGSize)sizeInPixelForBackgroundSize:(CGSize)backgroundSize;

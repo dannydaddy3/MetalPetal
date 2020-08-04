@@ -18,6 +18,8 @@
 #import "MTIImagePromiseDebug.h"
 #import "MTIContext+Internal.h"
 #import "MTIError.h"
+#import "MTIPixelFormat.h"
+#import "MTIFunctionArgumentsEncoder.h"
 
 @interface MTIComputeFunctionDispatchOptions ()
 
@@ -53,6 +55,7 @@
 
 @end
 
+__attribute__((objc_subclassing_restricted))
 @interface MTIImageComputeRecipe : NSObject <MTIImagePromise>
 
 @property (nonatomic,copy,readonly) NSArray<MTIImage *> *inputImages;
@@ -125,8 +128,9 @@
         [commandEncoder setTexture:[renderingContext resolvedTextureForImage:image] atIndex:index];
         index += 1;
     }
+    [commandEncoder setTexture:renderTarget.texture atIndex:index];
     
-    [MTIArgumentsEncoder encodeArguments:computePipeline.reflection.arguments values:self.functionParameters functionType:MTLFunctionTypeKernel encoder:commandEncoder error:&error];
+    [MTIFunctionArgumentsEncoder encodeArguments:computePipeline.reflection.arguments values:self.functionParameters functionType:MTLFunctionTypeKernel encoder:commandEncoder error:&error];
     
     if (error) {
         [commandEncoder endEncoding];
@@ -153,12 +157,17 @@
     }
     
     if (@available(iOS 11.0, macOS 10.13, *)) {
+        BOOL supportsNonUniformThreadgroupSize = NO;
         #if TARGET_OS_IPHONE
-        MTLFeatureSet featureSetSupportsNonUniformThreadgroupSize = MTLFeatureSet_iOS_GPUFamily4_v1;
+            #if TARGET_OS_MACCATALYST
+            supportsNonUniformThreadgroupSize = [renderingContext.context.device supportsFamily:MTLGPUFamilyMacCatalyst1];
+            #else
+            supportsNonUniformThreadgroupSize = [renderingContext.context.device supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily4_v1];
+            #endif
         #else
-        MTLFeatureSet featureSetSupportsNonUniformThreadgroupSize = MTLFeatureSet_macOS_GPUFamily1_v3;
+        supportsNonUniformThreadgroupSize = [renderingContext.context.device supportsFeatureSet:MTLFeatureSet_macOS_GPUFamily1_v3];
         #endif
-        if ([renderingContext.context.device supportsFeatureSet:featureSetSupportsNonUniformThreadgroupSize]) {
+        if (supportsNonUniformThreadgroupSize) {
             [commandEncoder dispatchThreads:threadsPerGrid threadsPerThreadgroup:threadsPerThreadgroup];
         } else {
             [commandEncoder dispatchThreadgroups:threadgroupsPerGrid threadsPerThreadgroup:threadsPerThreadgroup];

@@ -99,7 +99,7 @@ static MTLPixelFormat MTIMTLPixelFormatForCVPixelFormatType(OSType type, BOOL sR
             return MTLPixelFormatR32Float;
             
         case kCVPixelFormatType_OneComponent8:
-            #if TARGET_OS_IPHONE
+            #if TARGET_OS_IPHONE && !TARGET_OS_MACCATALYST
             return sRGB ? MTLPixelFormatR8Unorm_sRGB : MTLPixelFormatR8Unorm;
             #else
             NSCParameterAssert(!sRGB); //R8Unorm_sRGB texture is not available on macOS.
@@ -215,16 +215,16 @@ static MTLPixelFormat MTIMTLPixelFormatForCVPixelFormatType(OSType type, BOOL sR
         return nil;
     }
     CIImage *image = [CIImage imageWithCVPixelBuffer:self.pixelBuffer];
-    CGColorSpaceRef colorspace = nil;
+    CGColorSpaceRef colorSpace = nil;
     if (_sRGB) {
         //with sRGB texture CI should write linearRGB values
-        colorspace = nil;
+        colorSpace = nil;
     } else {
-        colorspace = CGColorSpaceCreateDeviceRGB();
+        colorSpace = CGColorSpaceCreateDeviceRGB();
     }
     if (@available(iOS 11.0, *)) {
         CIRenderDestination *destination = [[CIRenderDestination alloc] initWithMTLTexture:renderTarget.texture commandBuffer:renderingContext.commandBuffer];
-        destination.colorSpace = colorspace;
+        destination.colorSpace = colorSpace;
         destination.flipped = YES;
         [renderingContext.context.coreImageContext startTaskToRender:image toDestination:destination error:&error];
         if (error) {
@@ -235,9 +235,9 @@ static MTLPixelFormat MTIMTLPixelFormatForCVPixelFormatType(OSType type, BOOL sR
         }
     } else {
         image = [image imageByApplyingOrientation:4];
-        [renderingContext.context.coreImageContext render:image toMTLTexture:renderTarget.texture commandBuffer:renderingContext.commandBuffer bounds:image.extent colorSpace:colorspace];
+        [renderingContext.context.coreImageContext render:image toMTLTexture:renderTarget.texture commandBuffer:renderingContext.commandBuffer bounds:image.extent colorSpace:colorSpace];
     }
-    CGColorSpaceRelease(colorspace);
+    CGColorSpaceRelease(colorSpace);
     return renderTarget;
 }
 
@@ -370,7 +370,7 @@ static MTLPixelFormat MTIMTLPixelFormatForCVPixelFormatType(OSType type, BOOL sR
                 return nil;
             }
             
-            #if TARGET_OS_IPHONE
+            #if TARGET_OS_IPHONE && !TARGET_OS_MACCATALYST
             //Workaround for #64. See https://github.com/MetalPetal/MetalPetal/issues/64
             if (![renderingContext.context.device supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily2_v1]) {
                 NSError *error;

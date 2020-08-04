@@ -10,20 +10,21 @@
 #import <MetalKit/MetalKit.h>
 #import <CoreImage/CoreImage.h>
 #import <CoreVideo/CoreVideo.h>
-#import "MTIKernel.h"
-#import "MTIImagePromise.h"
+#if __has_include(<MetalPetal/MetalPetal.h>)
+#import <MetalPetal/MTIMemoryWarningObserver.h>
+#else
 #import "MTIMemoryWarningObserver.h"
-#import "MTICVMetalTextureBridging.h"
-#import "MTITextureLoader.h"
-#import "MTITexturePool.h"
+#endif
 
 NS_ASSUME_NONNULL_BEGIN
 
 @class MTICVMetalTextureCache;
+@protocol MTITextureLoader, MTITexturePool, MTICVMetalTextureBridging;
 
 FOUNDATION_EXPORT NSString * const MTIContextDefaultLabel;
 
 /// Options for creating a MTIContext.
+__attribute__((objc_subclassing_restricted))
 @interface MTIContextOptions : NSObject <NSCopying>
 
 @property (nonatomic, copy, nullable) NSDictionary<CIContextOption,id> *coreImageContextOptions;
@@ -69,6 +70,7 @@ FOUNDATION_EXPORT NSString * const MTIContextDefaultLabel;
 FOUNDATION_EXPORT NSURL * _Nullable MTIDefaultLibraryURLForBundle(NSBundle *bundle);
 
 /// An evaluation context for rendering image processing results.
+__attribute__((objc_subclassing_restricted))
 @interface MTIContext : NSObject
 
 - (instancetype)init NS_UNAVAILABLE;

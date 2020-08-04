@@ -30,12 +30,15 @@ NSString * const MTIImageViewErrorDomain = @"MTIImageViewErrorDomain";
 
 @property CGFloat contentsScale;
 
+@property (nullable) CGColorSpaceRef colorspace;
+
 - (id<CAMetalDrawable>)nextDrawable;
 
 @end
 
 
 // For simulator < iOS 13
+__attribute__((objc_subclassing_restricted))
 @interface MTIStubMetalLayer : CALayer <MTICAMetalLayer>
 
 @property (nullable, retain, atomic) id<MTLDevice> device;
@@ -44,12 +47,22 @@ NSString * const MTIImageViewErrorDomain = @"MTIImageViewErrorDomain";
 
 @property (atomic) CGSize drawableSize;
 
+@property (nullable) CGColorSpaceRef colorspace;
+
 @end
 
 @implementation MTIStubMetalLayer
 
 - (id<CAMetalDrawable>)nextDrawable {
     return nil;
+}
+
+- (CGColorSpaceRef)colorspace {
+    return nil;
+}
+
+- (void)setColorspace:(CGColorSpaceRef)colorspace {
+    
 }
 
 @end
@@ -77,6 +90,8 @@ NSString * const MTIImageViewErrorDomain = @"MTIImageViewErrorDomain";
 @property (nonatomic) CGRect backgroundAccessingBounds;
 
 @property (nonatomic) BOOL currentDrawableValid;
+
+@property (nonatomic) CGSize currentDrawableSize;
 
 @end
 
@@ -123,6 +138,7 @@ NSString * const MTIImageViewErrorDomain = @"MTIImageViewErrorDomain";
         NSLog(@"%@: Failed to create MTIContext - %@",self,error);
     }
     _renderLayer.device = device;
+    _currentDrawableSize = _renderLayer.drawableSize;
     _lock = MTILockCreate();
     self.opaque = YES;
 }
@@ -178,6 +194,22 @@ NSString * const MTIImageViewErrorDomain = @"MTIImageViewErrorDomain";
     MTLPixelFormat format = _renderLayer.pixelFormat;
     [_lock unlock];
     return format;
+}
+
+- (void)setColorSpace:(CGColorSpaceRef)colorSpace {
+    [_lock lock];
+    if (_renderLayer.colorspace != colorSpace) {
+        _renderLayer.colorspace = colorSpace;
+        [self renderImage:_image completion:nil];
+    }
+    [_lock unlock];
+}
+
+- (CGColorSpaceRef)colorSpace {
+    [_lock lock];
+    CGColorSpaceRef colorspace = _renderLayer.colorspace;
+    [_lock unlock];
+    return colorspace;
 }
 
 - (void)setClearColor:(MTLClearColor)clearColor {
@@ -326,9 +358,11 @@ NSString * const MTIImageViewErrorDomain = @"MTIImageViewErrorDomain";
         CGFloat heightScale = imageSize.height/_backgroundAccessingBounds.size.height;
         CGFloat nativeScale = _screenScale;
         CGFloat scale = MAX(MIN(MAX(widthScale,heightScale),nativeScale), 1.0);
-        if (ABS(renderLayer.contentsScale - scale) > 0.00001) {
+        CGSize drawableSize = CGSizeMake(_backgroundAccessingBounds.size.width * scale, _backgroundAccessingBounds.size.height * scale);
+        if (ABS(renderLayer.contentsScale - scale) > 0.00001 || !CGSizeEqualToSize(drawableSize, _currentDrawableSize)) {
             renderLayer.contentsScale = scale;
-            renderLayer.drawableSize = CGSizeMake(_backgroundAccessingBounds.size.width * scale, _backgroundAccessingBounds.size.height * scale);
+            renderLayer.drawableSize = drawableSize;
+            _currentDrawableSize = drawableSize;
         }
     }
 }

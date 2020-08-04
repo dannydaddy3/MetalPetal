@@ -20,11 +20,15 @@ typedef NS_ERROR_ENUM(MTIErrorDomain, MTIError) {
     MTIErrorFailedToCreateTexture = 1004,
     MTIErrorFailedToCreateCommandEncoder = 1005,
     MTIErrorFailedToCreateHeap = 1006,
+    MTIErrorDefaultLibraryNotFound = 1007,
     
     //Texture loading errors
     MTIErrorUnsupportedCVPixelBufferFormat = 2001,
     MTIErrorTextureDimensionsMismatch = 2002,
-    
+    MTIErrorTextureLoaderOptionNotSupported = 2003,
+    MTIErrorTextureLoaderFailedToCreateCGContext = 2004,
+    MTIErrorTextureLoaderFailedToCreateCGImage = 2005,
+
     //Image errors
     MTIErrorUnsupportedImageCachePolicy = 3001,
     
@@ -33,6 +37,7 @@ typedef NS_ERROR_ENUM(MTIErrorDomain, MTIError) {
     MTIErrorParameterDataTypeNotSupported = 4002,
     MTIErrorMPSKernelInputCountMismatch = 4003,
     MTIErrorMPSKernelNotSupported = 4004,
+    MTIErrorTextureBindingFailed = 4005,
     
     //Render errors
     MTIErrorEmptyDrawable = 5001,

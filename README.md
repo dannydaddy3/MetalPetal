@@ -1,8 +1,8 @@
 # MetalPetal
 
-[![Platform](https://img.shields.io/badge/platform-iOS%2010.0%2B%20%7C%20macOS%2010.13%2B-blue.svg?style=flat-square)](#)
-[![Version](https://img.shields.io/cocoapods/v/MetalPetal.svg?style=flat-square)](#)
-[![License](https://img.shields.io/cocoapods/l/MetalPetal.svg?style=flat-square)](#)
+[![Platform](https://img.shields.io/badge/platform-iOS%2010.0%2B%20%7C%20macOS%2010.13%2B%20%7C%20macCatalyst-blue.svg)](#)
+[![Version](https://img.shields.io/cocoapods/v/MetalPetal.svg)](#)
+[![Swift](https://github.com/MetalPetal/MetalPetal/workflows/Swift/badge.svg)](#)
 
 An image processing framework based on Metal.
 
@@ -21,6 +21,7 @@ An image processing framework based on Metal.
     - [Advantages over Core Image](#advantages-over-core-image)
     - [Extensions](#extensions)
         - [Working with SceneKit](#working-with-scenekit)
+        - [Working with SpriteKit](#working-with-spritekit)
         - [Working with Core Image](#working-with-core-image)
         - [Working with JavaScript](#working-with-javascript)
         - [Texture Loader](#texture-loader)
@@ -153,6 +154,10 @@ A `MTIContext` contains a lot of states and caches. There's a thread-safe mechan
 
 You can use `MTISCNSceneRenderer` to generate `MTIImage`s from a `SCNScene`. You may want to handle the SceneKit renderer's linear RGB color space, see issue [#76 The image from SceneKit is darker than normal](https://github.com/MetalPetal/MetalPetal/issues/76).
 
+#### Working with SpriteKit
+
+You can use `MTISKSceneRenderer` to generate `MTIImage`s from a `SKScene`.
+
 #### Working with Core Image
 
 You can create `MTIImage`s from `CIImage`s.
@@ -274,13 +279,13 @@ You can custom this behavior by implementing the `MTITextureLoader` protocol. Th
 ### Create a `MTIImage`
 
 ```Swift
-let imageFromCGImage = MTIImage(cgImage: cgImage, options: [.SRGB: false])
+let imageFromCGImage = MTIImage(cgImage: cgImage)
 
 let imageFromCIImage = MTIImage(ciImage: ciImage)
 
 let imageFromCoreVideoPixelBuffer = MTIImage(cvPixelBuffer: pixelBuffer, alphaType: .alphaIsOne)
 
-let imageFromContentsOfURL = MTIImage(contentsOf: url, options: [.SRGB: false])
+let imageFromContentsOfURL = MTIImage(contentsOf: url)
 
 // unpremultiply alpha if needed
 let unpremultipliedAlphaImage = image.unpremultiplyingAlpha()
@@ -441,7 +446,7 @@ The shader function argument types and the coorresponding types to use in a para
 | int | Int32 | int |
 | uint | UInt32 | uint |
 | bool | Bool | bool |
-| simd (float2,float4,float4x4,int4, etc.) | MTIVector | MTIVector |
+| simd (float2,float4,float4x4,int4, etc.) | simd (with `MetalPetal/Swift`) / MTIVector | MTIVector |
 | struct | Data / MTIDataBuffer | NSData / MTIDataBuffer |
 | other (float *, struct *, etc.) immutable | Data / MTIDataBuffer | NSData / MTIDataBuffer |
 | other (float *, struct *, etc.) mutable | MTIDataBuffer | MTIDataBuffer |
@@ -587,7 +592,21 @@ In rare scenarios, you may want to access the underlying texture directly, use m
 
 You can create new input sources or fully custom processing unit by implementing `MTIImagePromise` protocol. You will need to import an additional module to do so. 
 
-Objective-C: `@import MetalPetal.Extension;`.
+Objective-C
+
+```
+@import MetalPetal.Extension;
+```
+
+Swift
+
+```
+// CocoaPods
+import MetalPetal.Extension
+
+// Swift Package Manager
+import MetalPetalObjectiveC.Extension
+```
 
 See the implementation of `MTIComputePipelineKernel`, `MTICLAHELUTRecipe` or `MTIImage` for example.
 
@@ -602,7 +621,7 @@ use_frameworks!
 
 pod 'MetalPetal'
 
-# If you are using Swift
+# Required if you are using Swift.
 pod 'MetalPetal/Swift'
 
 ```
@@ -611,13 +630,13 @@ We also provide a script to generate dynamic `.framework`s for you. You need to 
 
 ### Swift Package Manager
 
-This repo contains a package description file. However using Swift Package Manager is not supported until [SE-0271](https://github.com/apple/swift-evolution/blob/master/proposals/0271-package-manager-resources.md) is fully implemented.
+[Adding Package Dependencies to Your App](https://developer.apple.com/documentation/xcode/adding_package_dependencies_to_your_app)
 
 ## iOS Simulator Support
 
 MetalPetal can run on Simulator with Xcode 11+ and macOS 10.15+.
 
-`MetalPerformanceShaders.framework` is not available on Simulator, so filters rely on `MetalPerformanceShaders`, such as `MTIMPSGaussianBlurFilter`, `MTICLAHEFilter`, do not work.
+`MetalPerformanceShaders.framework` is not available on Simulator, so filters that rely on `MetalPerformanceShaders`, such as `MTIMPSGaussianBlurFilter`, `MTICLAHEFilter`, do not work.
 
 Simulator supports fewer features or different implementation limits than an actual Apple GPU. See [Developing Metal Apps that Run in Simulator](https://developer.apple.com/documentation/metal/developing_metal_apps_that_run_in_simulator) for detail.
 
